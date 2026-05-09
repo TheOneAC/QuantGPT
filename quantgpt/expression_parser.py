@@ -289,6 +289,7 @@ class ExpressionParser:
         'ts_covariance': 'ts_cov',
         'ts_arg_max': 'ts_argmax',
         'ts_arg_min': 'ts_argmin',
+        'sum': 'ts_sum',
     }
 
     # Special variable mappings (computed from DataFrame columns)
@@ -594,9 +595,12 @@ class ExpressionParser:
                 if 'stock_code' in df.columns:
                     # Apply per-stock: build temporary frame, groupby, apply
                     tmp = pd.DataFrame({'s1': s1, 's2': s2, 'sc': df['stock_code']}, index=df.index)
-                    return tmp.groupby('sc', group_keys=False).apply(
+                    result = tmp.groupby('sc', group_keys=False).apply(
                         lambda g: _op(g['s1'], g['s2'], _w)
                     )
+                    if not result.index.equals(df.index):
+                        result = result.reindex(df.index)
+                    return result
                 return _op(s1, s2, _w)
             return _ts_dual
 
@@ -1019,6 +1023,7 @@ _ALIAS_NORMALIZE = {
     'ts_delay': 'ts_shift', 'ts_covariance': 'ts_cov',
     'ts_arg_max': 'ts_argmax', 'ts_arg_min': 'ts_argmin',
     'indneutralize': 'indneutralize', 'IndNeutralize': 'indneutralize',
+    'sum': 'ts_sum',
 }
 
 
