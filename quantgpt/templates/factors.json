@@ -1,0 +1,576 @@
+[
+  {
+    "id": "alpha_001",
+    "name": "Alpha 001: 动量强度",
+    "category": "momentum",
+    "expression": "rank(ts_argmax(sign_power((ts_std(returns, 20) if returns < 0 else close), 2), 5)) - 0.5",
+    "signal_description": "基于波动率调整后的动量强度，弱势行情使用20日波动率替代价格"
+  },
+  {
+    "id": "alpha_002",
+    "name": "Alpha 002: 量价背离",
+    "category": "volume",
+    "expression": "-1 * correlation(rank(ts_delta(log(volume), 2)), rank((close - open) / open), 6)",
+    "signal_description": "成交量变化与日内收益率的负相关，捕捉量价背离信号"
+  },
+  {
+    "id": "alpha_003",
+    "name": "Alpha 003: 开盘量比",
+    "category": "volume",
+    "expression": "-1 * correlation(rank(open), rank(volume), 10)",
+    "signal_description": "开盘价与成交量的负相关性，反映开盘放量后的回调预期"
+  },
+  {
+    "id": "alpha_004",
+    "name": "Alpha 004: 低位反转",
+    "category": "reversal",
+    "expression": "-1 * ts_rank(rank(low), 9)",
+    "signal_description": "最低价的历史分位数倒数，捕捉超跌反弹信号"
+  },
+  {
+    "id": "alpha_005",
+    "name": "Alpha 005: VWAP偏离",
+    "category": "price_pattern",
+    "expression": "rank(open - sum(vwap, 10) / 10) * (-1 * abs(rank(close - vwap)))",
+    "signal_description": "开盘价偏离均线VWAP与收盘价偏离VWAP的复合信号"
+  },
+  {
+    "id": "alpha_006",
+    "name": "Alpha 006: 开盘量压",
+    "category": "volume",
+    "expression": "-1 * correlation(open, volume, 10)",
+    "signal_description": "开盘价与成交量的负相关性，反映开盘压力"
+  },
+  {
+    "id": "alpha_007",
+    "name": "Alpha 007: 成交量阈值反转",
+    "category": "hybrid",
+    "expression": "(-1 * ts_rank(abs(ts_delta(close, 7)), 60) * sign(ts_delta(close, 7))) if adv20 < volume else -1",
+    "signal_description": "基于成交量是否超过20日均量的条件性反转信号"
+  },
+  {
+    "id": "alpha_008",
+    "name": "Alpha 008: 开盘额动量",
+    "category": "momentum",
+    "expression": "-1 * rank(sum(open, 5) * sum(returns, 5) - delay(sum(open, 5) * sum(returns, 5), 10))",
+    "signal_description": "开盘价与收益率的乘积动量，捕捉短期趋势延续性"
+  },
+  {
+    "id": "alpha_009",
+    "name": "Alpha 009: 趋势条件反转",
+    "category": "reversal",
+    "expression": "ts_delta(close, 1) if 0 < ts_min(ts_delta(close, 1), 5) else (ts_delta(close, 1) if ts_max(ts_delta(close, 1), 5) < 0 else -1 * ts_delta(close, 1))",
+    "signal_description": "基于5日涨跌极值的条件性反转信号"
+  },
+  {
+    "id": "alpha_010",
+    "name": "Alpha 010: 短期条件反转",
+    "category": "reversal",
+    "expression": "rank(ts_delta(close, 1) if 0 < ts_min(ts_delta(close, 1), 4) else (ts_delta(close, 1) if ts_max(ts_delta(close, 1), 4) < 0 else -1 * ts_delta(close, 1)))",
+    "signal_description": "基于4日涨跌极值的条件性反转信号（Alpha 009的4日版本加截面排名）"
+  },
+  {
+    "id": "alpha_011",
+    "name": "Alpha 011: VWAP通道突破",
+    "category": "price_pattern",
+    "expression": "(rank(ts_max(vwap - close, 3)) + rank(ts_min(vwap - close, 3))) * rank(ts_delta(volume, 3))",
+    "signal_description": "VWAP偏离极值与成交量变化的复合突破信号"
+  },
+  {
+    "id": "alpha_012",
+    "name": "Alpha 012: 量减价跌",
+    "category": "reversal",
+    "expression": "sign(ts_delta(volume, 1)) * (-1 * ts_delta(close, 1))",
+    "signal_description": "成交量变化方向与价格变化方向的相反关系"
+  },
+  {
+    "id": "alpha_013",
+    "name": "Alpha 013: 价格排名相关",
+    "category": "volume",
+    "expression": "-1 * rank(covariance(rank(close), rank(volume), 5))",
+    "signal_description": "价格排名与成交量排名的协方差，捕捉量价背离的程度"
+  },
+  {
+    "id": "alpha_014",
+    "name": "Alpha 014: 收益变化开盘相关",
+    "category": "volume",
+    "expression": "(-1 * rank(ts_delta(returns, 3))) * correlation(open, volume, 10)",
+    "signal_description": "收益率变化与开盘-成交量相关性的乘积信号"
+  },
+  {
+    "id": "alpha_015",
+    "name": "Alpha 015: 高价量相关",
+    "category": "volume",
+    "expression": "-1 * sum(rank(correlation(rank(high), rank(volume), 3)), 3)",
+    "signal_description": "高价与成交量的排名相关性累积，反映高价区的量能变化"
+  },
+  {
+    "id": "alpha_016",
+    "name": "Alpha 016: 高价排名协方差",
+    "category": "volume",
+    "expression": "-1 * rank(covariance(rank(high), rank(volume), 5))",
+    "signal_description": "高价排名与成交量排名的协方差，捕捉高位量价关系"
+  },
+  {
+    "id": "alpha_017",
+    "name": "Alpha 017: 价格二阶导数",
+    "category": "reversal",
+    "expression": "-1 * rank(ts_rank(close, 10)) * rank(ts_delta(ts_delta(close, 1), 1)) * rank(ts_rank(volume / adv20, 5))",
+    "signal_description": "价格变化加速度与成交量活跃度的复合反转信号"
+  },
+  {
+    "id": "alpha_018",
+    "name": "Alpha 018: 日内波动复合",
+    "category": "volatility",
+    "expression": "-1 * rank(ts_std(abs(close - open), 5) + (close - open) + correlation(close, open, 10))",
+    "signal_description": "日内振幅、涨跌幅、开收相关性的复合波动信号"
+  },
+  {
+    "id": "alpha_019",
+    "name": "Alpha 019: 周线动量",
+    "category": "momentum",
+    "expression": "-1 * sign((close - delay(close, 7)) + ts_delta(close, 7)) * (1 + rank(1 + sum(returns, 250)))",
+    "signal_description": "周线方向与长期累计收益率的复合动量信号"
+  },
+  {
+    "id": "alpha_020",
+    "name": "Alpha 020: 开盘缺口",
+    "category": "price_pattern",
+    "expression": "-1 * rank(open - delay(high, 1)) * rank(open - delay(close, 1)) * rank(open - delay(low, 1))",
+    "signal_description": "开盘价相对昨日高低收的三重缺口信号"
+  },
+  {
+    "id": "alpha_021",
+    "name": "Alpha 021: 均线波动比较",
+    "category": "volatility",
+    "expression": "-1 if (sum(close, 8) / 8 + ts_std(close, 8) < sum(close, 2) / 2) else (1 if (sum(close, 2) / 2 < sum(close, 8) / 8 - ts_std(close, 8)) else (1 if volume / adv20 >= 1 else -1))",
+    "signal_description": "短期与长期均线和波动率的比较，结合成交量判断趋势"
+  },
+  {
+    "id": "alpha_022",
+    "name": "Alpha 022: 量价相关变化",
+    "category": "volume",
+    "expression": "-1 * ts_delta(correlation(high, volume, 5), 5) * rank(ts_std(close, 20))",
+    "signal_description": "高价-成交量相关性变化与价格波动率的乘积"
+  },
+  {
+    "id": "alpha_023",
+    "name": "Alpha 023: 高价突破",
+    "category": "price_pattern",
+    "expression": "-1 * ts_delta(high, 2) if sum(high, 20) / 20 < high else 0",
+    "signal_description": "突破20日高价均线后的短期反转信号"
+  },
+  {
+    "id": "alpha_024",
+    "name": "Alpha 024: 均线偏离阈值",
+    "category": "volatility",
+    "expression": "-1 * (close - ts_min(close, 100)) if ts_delta(sum(close, 100) / 100, 100) / delay(close, 100) <= 0.05 else -1 * ts_delta(close, 3)",
+    "signal_description": "100日均线变化率低于阈值时做多下跌空间，否则做空短期变动"
+  },
+  {
+    "id": "alpha_025",
+    "name": "Alpha 025: 收益率量价复合",
+    "category": "price_pattern",
+    "expression": "rank(-1 * returns * adv20 * vwap * (high - close))",
+    "signal_description": "收益率、成交量、VWAP与价格区间的复合信号"
+  },
+  {
+    "id": "alpha_026",
+    "name": "Alpha 026: 量排名高价排名相关",
+    "category": "volume",
+    "expression": "-1 * ts_max(correlation(ts_rank(volume, 5), ts_rank(high, 5), 5), 3)",
+    "signal_description": "成交量排名与高价排名相关性的最大值衰减"
+  },
+  {
+    "id": "alpha_027",
+    "name": "Alpha 027: 量价排名相关均值",
+    "category": "volume",
+    "expression": "-1 if 0.5 < rank(sum(correlation(rank(volume), rank(vwap), 6), 2) / 2.0) else 1",
+    "signal_description": "成交量排名与VWAP排名相关性的均值阈值信号"
+  },
+  {
+    "id": "alpha_028",
+    "name": "Alpha 028: 量价低点偏离",
+    "category": "price_pattern",
+    "expression": "scale(correlation(adv20, low, 5) + (high + low) / 2 - close)",
+    "signal_description": "成交量-最低价相关性与中价偏离收盘价的L1标准化"
+  },
+  {
+    "id": "alpha_029",
+    "name": "Alpha 029: 复合衰减",
+    "category": "volatility",
+    "expression": "ts_min(rank(rank(scale(log(sum(ts_min(rank(rank(-1 * rank(ts_delta(close - 1, 5)))), 2), 1))))), 5) + ts_rank(delay(-1 * returns, 6), 5)",
+    "signal_description": "多层标准化后的价格变化衰减与滞后收益的复合"
+  },
+  {
+    "id": "alpha_030",
+    "name": "Alpha 030: 涨跌方向量比",
+    "category": "volume",
+    "expression": "(1 - rank(sign(ts_delta(close, 1)) + sign(delay(ts_delta(close, 1), 1)) + sign(delay(ts_delta(close, 1), 2)))) * sum(volume, 5) / sum(volume, 20)",
+    "signal_description": "涨跌方向一致性（三日）与短中成交量比例的乘积"
+  },
+  {
+    "id": "alpha_031",
+    "name": "Alpha 031: 多层动量衰减",
+    "category": "volatility",
+    "expression": "rank(rank(rank(decay_linear(-1 * rank(rank(ts_delta(close, 10))), 10)))) + rank(-1 * ts_delta(close, 3)) + sign(scale(correlation(adv20, low, 12)))",
+    "signal_description": "多层排名衰减、短期变化与量价相关性的复合信号"
+  },
+  {
+    "id": "alpha_032",
+    "name": "Alpha 032: 均线偏离修正",
+    "category": "momentum",
+    "expression": "scale(sum(close, 7) / 7 - close) + 20 * scale(correlation(vwap, delay(close, 5), 230))",
+    "signal_description": "7日均线偏离度与VWAP-滞后收盘价长周期相关的L1标准化"
+  },
+  {
+    "id": "alpha_033",
+    "name": "Alpha 033: 开盘收盘比",
+    "category": "reversal",
+    "expression": "rank(-1 * (1 - open / close))",
+    "signal_description": "开盘收盘比的反向排名，捕捉日内弱势后的反弹机会"
+  },
+  {
+    "id": "alpha_034",
+    "name": "Alpha 034: 波动相对强度",
+    "category": "momentum",
+    "expression": "rank(2 - rank(ts_std(returns, 2) / ts_std(returns, 5)) - rank(ts_delta(close, 1)))",
+    "signal_description": "短期vs中期波动率比值与价格变化的综合排名"
+  },
+  {
+    "id": "alpha_035",
+    "name": "Alpha 035: 三维排名乘积",
+    "category": "hybrid",
+    "expression": "ts_rank(volume, 32) * (1 - ts_rank(close + high - low, 16)) * (1 - ts_rank(returns, 32))",
+    "signal_description": "成交量、价格区间和收益率的排名乘积，三维度交叉信号"
+  },
+  {
+    "id": "alpha_036",
+    "name": "Alpha 036: 多因子复合",
+    "category": "hybrid",
+    "expression": "2.21 * rank(correlation(close - open, delay(volume, 1), 15)) + 0.7 * rank(open - close) + 0.73 * rank(ts_rank(delay(-1 * returns, 6), 5)) + rank(abs(correlation(vwap, adv20, 6))) + 0.6 * rank((sum(close, 200) / 200 - open) * (close - open))",
+    "signal_description": "线性加权组合：量价相关、日内涨跌、滞后收益、VWAP相关、均线偏离"
+  },
+  {
+    "id": "alpha_037",
+    "name": "Alpha 037: 开盘缺口相关",
+    "category": "price_pattern",
+    "expression": "rank(correlation(delay(open - close, 1), close, 200)) + rank(open - close)",
+    "signal_description": "历史开盘缺口与收盘价的相关性加上当日缺口强度"
+  },
+  {
+    "id": "alpha_038",
+    "name": "Alpha 038: 开盘排名动量",
+    "category": "momentum",
+    "expression": "-1 * rank(ts_rank(open, 10)) * rank(close / open)",
+    "signal_description": "开盘价历史排名与当日收益率的乘积"
+  },
+  {
+    "id": "alpha_039",
+    "name": "Alpha 039: 价格变化量比衰减",
+    "category": "volatility",
+    "expression": "-1 * rank(ts_delta(close, 7) * (1 - rank(decay_linear(volume / adv20, 9)))) * (1 + rank(sum(returns, 250)))",
+    "signal_description": "周价格变化乘以成交量衰减，并用长期收益调整"
+  },
+  {
+    "id": "alpha_040",
+    "name": "Alpha 040: 高价波动量比",
+    "category": "volume",
+    "expression": "-1 * rank(ts_std(high, 10)) * correlation(high, volume, 10)",
+    "signal_description": "高价波动率与量价相关性的乘积"
+  },
+  {
+    "id": "alpha_041",
+    "name": "Alpha 041: 高低中价",
+    "category": "momentum",
+    "expression": "(high * low) ^ 0.5 - vwap",
+    "signal_description": "高低价几何均值与VWAP的偏离，反映日内均衡价格偏移"
+  },
+  {
+    "id": "alpha_042",
+    "name": "Alpha 042: VWAP偏离比",
+    "category": "momentum",
+    "expression": "rank(vwap - close) / rank(vwap + close)",
+    "signal_description": "VWAP偏离度与VWAP中枢的排名比值"
+  },
+  {
+    "id": "alpha_043",
+    "name": "Alpha 043: 量比周反转",
+    "category": "volume",
+    "expression": "ts_rank(volume / adv20, 20) * ts_rank(-1 * ts_delta(close, 7), 8)",
+    "signal_description": "成交量活跃度排名与周涨跌幅排名的乘积"
+  },
+  {
+    "id": "alpha_044",
+    "name": "Alpha 044: 高价成交量排名相关",
+    "category": "volume",
+    "expression": "-1 * correlation(high, rank(volume), 5)",
+    "signal_description": "高价与成交量排名的负相关性"
+  },
+  {
+    "id": "alpha_045",
+    "name": "Alpha 045: 滞后均线量价相关",
+    "category": "volume",
+    "expression": "-1 * rank(delay(sum(close, 5), 5) / 5) * correlation(close, volume, 2) * rank(correlation(sum(close, 5), sum(close, 20), 2))",
+    "signal_description": "滞后均价、短期量价相关和周期相关性的三重乘积"
+  },
+  {
+    "id": "alpha_046",
+    "name": "Alpha 046: 均线斜率条件",
+    "category": "momentum",
+    "expression": "-1 if (delay(close, 20) - delay(close, 10)) / 10 - (delay(close, 10) - close) / 10 > 0.25 else (1 if (delay(close, 20) - delay(close, 10)) / 10 - (delay(close, 10) - close) / 10 < 0 else -1 * ts_delta(close, 1))",
+    "signal_description": "20-10日均线斜率与10-0日斜率之差的阈值判断"
+  },
+  {
+    "id": "alpha_047",
+    "name": "Alpha 047: 量价突破复合",
+    "category": "volume",
+    "expression": "rank(1 / close) * volume / adv20 * (high * rank(high - close) / (sum(high, 5) / 5)) - rank(vwap - delay(vwap, 5))",
+    "signal_description": "价格倒数、成交量比、高价突破幅度的复合信号减去VWAP变化"
+  },
+  {
+    "id": "alpha_049",
+    "name": "Alpha 049: 均线斜率反转",
+    "category": "momentum",
+    "expression": "1 if (delay(close, 20) - delay(close, 10)) / 10 - (delay(close, 10) - close) / 10 < -0.1 else -1 * ts_delta(close, 1)",
+    "signal_description": "均线斜率低于阈值时做多，否则做空日变化"
+  },
+  {
+    "id": "alpha_050",
+    "name": "Alpha 050: VWAP量比排名相关",
+    "category": "volume",
+    "expression": "-1 * ts_max(rank(correlation(rank(volume), rank(vwap), 5)), 5)",
+    "signal_description": "成交量排名与VWAP排名相关性的排名滚动最大值"
+  },
+  {
+    "id": "alpha_051",
+    "name": "Alpha 051: 均线斜率条件反转",
+    "category": "momentum",
+    "expression": "1 if (delay(close, 20) - delay(close, 10)) / 10 - (delay(close, 10) - close) / 10 < 0 else -1 * ts_delta(close, 1)",
+    "signal_description": "均线斜率为负时做多，否则做空日变化（Alpha 046的简化版）"
+  },
+  {
+    "id": "alpha_052",
+    "name": "Alpha 052: 低位波动收益动量",
+    "category": "momentum",
+    "expression": "-1 * ts_delta(ts_min(low, 5), 5) * rank((sum(returns, 240) - sum(returns, 20)) / 220) * ts_rank(volume, 5)",
+    "signal_description": "最低价低位变化、长期超额收益、成交量排名的复合"
+  },
+  {
+    "id": "alpha_053",
+    "name": "Alpha 053: 日内振幅比变化",
+    "category": "reversal",
+    "expression": "-1 * ts_delta((close - low - (high - close)) / (close - low), 9)",
+    "signal_description": "日内上下影线比率的变化，捕捉多空力量转换"
+  },
+  {
+    "id": "alpha_054",
+    "name": "Alpha 054: 开盘收盘非对称",
+    "category": "reversal",
+    "expression": "-1 * (low - close) * (open ^ 5) / ((low - high) * (close ^ 5))",
+    "signal_description": "开盘价和收盘价高低位的非对称比例关系"
+  },
+  {
+    "id": "alpha_055",
+    "name": "Alpha 055: 价格位置量比相关",
+    "category": "volume",
+    "expression": "-1 * correlation(rank((close - ts_min(low, 12)) / (ts_max(high, 12) - ts_min(low, 12))), rank(volume), 6)",
+    "signal_description": "价格在12日高低区间中的位置与成交量的排名相关性"
+  },
+  {
+    "id": "alpha_057",
+    "name": "Alpha 057: VWAP偏离衰减",
+    "category": "momentum",
+    "expression": "0 - (close - vwap) / decay_linear(rank(ts_argmax(close, 30)), 2)",
+    "signal_description": "VWAP偏离度除以最长上涨时间的衰减加权排名"
+  },
+  {
+    "id": "alpha_060",
+    "name": "Alpha 060: 量比影线突破",
+    "category": "price_pattern",
+    "expression": "0 - (2 * scale(rank((close - low - (high - close)) * volume / (high - low))) - scale(rank(ts_argmax(close, 10))))",
+    "signal_description": "上下影线量比突破与最长上涨时间的双信号"
+  },
+  {
+    "id": "alpha_061",
+    "name": "Alpha 061: VWAP低位与量相关",
+    "category": "volume",
+    "expression": "rank(vwap - ts_min(vwap, 16)) < rank(correlation(vwap, sum(volume, 180) / 180, 18))",
+    "signal_description": "VWAP低位偏离与VWAP-均量相关性的比较（值为0/1）"
+  },
+  {
+    "id": "alpha_062",
+    "name": "Alpha 062: 开盘突破量比复合",
+    "category": "volume",
+    "expression": "-1 * (rank(correlation(vwap, sum(adv20, 22) / 22, 10)) < rank((rank(open) + rank(open)) < (rank((high + low) / 2) + rank(high))))",
+    "signal_description": "VWAP-均量相关与开盘-中价位置的比较"
+  },
+  {
+    "id": "alpha_064",
+    "name": "Alpha 064: 加权开盘量比",
+    "category": "volatility",
+    "expression": "-1 * (rank(correlation(sum(0.178404 * open + 0.821596 * low, 13) / 13, sum(adv120, 13) / 13, 17)) < rank(ts_delta(0.178404 * (high + low) / 2 + 0.821596 * vwap, 4)))",
+    "signal_description": "加权开盘-低价均线与120日均量的相关性和加权中价的比较"
+  },
+  {
+    "id": "alpha_065",
+    "name": "Alpha 065: 加权开盘量比低位",
+    "category": "volume",
+    "expression": "-1 * (rank(correlation(0.00817205 * open + 0.99182795 * vwap, sum(adv60, 9) / 9, 6)) < rank(open - ts_min(open, 14)))",
+    "signal_description": "加权开盘-VWAP与60日均量的相关性vs开盘价14日低位"
+  },
+  {
+    "id": "alpha_066",
+    "name": "Alpha 066: VWAP变化量价衰减",
+    "category": "reversal",
+    "expression": "-1 * (rank(decay_linear(ts_delta(vwap, 4), 7)) + ts_rank(decay_linear((low - vwap) / (open - (high + low) / 2), 11), 7))",
+    "signal_description": "VWAP变化衰减与低位-VWAP偏离衰减的复合"
+  },
+  {
+    "id": "alpha_068",
+    "name": "Alpha 068: 高价排名量比相关",
+    "category": "volume",
+    "expression": "-1 * (ts_rank(correlation(rank(high), rank(adv15), 9), 14) < rank(ts_delta(0.518371 * close + 0.481629 * low, 1)))",
+    "signal_description": "高价排名与15日均量的相关性vs加权收盘-低价的短期变化"
+  },
+  {
+    "id": "alpha_071",
+    "name": "Alpha 071: 量价衰减最大",
+    "category": "price_pattern",
+    "expression": "max(ts_rank(decay_linear(correlation(ts_rank(close, 3), ts_rank(adv180, 12), 18), 4), 16), ts_rank(decay_linear(rank(low + open - 2 * vwap) ^ 2, 16), 4))",
+    "signal_description": "收盘排名-均量排名相关衰减与中价-VWAP偏离衰减的最大值"
+  },
+  {
+    "id": "alpha_072",
+    "name": "Alpha 072: 中价量比相关",
+    "category": "volume",
+    "expression": "rank(decay_linear(correlation((high + low) / 2, adv40, 9), 10)) / rank(decay_linear(correlation(ts_rank(vwap, 4), ts_rank(volume, 19), 7), 3))",
+    "signal_description": "中价-40日均量相关衰减与VWAP排名-量排名相关衰减的比值"
+  },
+  {
+    "id": "alpha_073",
+    "name": "Alpha 073: 加权低价VWAP衰减",
+    "category": "reversal",
+    "expression": "-1 * max(rank(decay_linear(ts_delta(vwap, 5), 3)), ts_rank(decay_linear(-1 * ts_delta(0.147155 * open + 0.852845 * low, 2) / (0.147155 * open + 0.852845 * low), 3), 17))",
+    "signal_description": "VWAP变化衰减与加权开盘-低价变化率衰减的最大值取反"
+  },
+  {
+    "id": "alpha_074",
+    "name": "Alpha 074: 收盘量比复合",
+    "category": "volume",
+    "expression": "-1 * (rank(correlation(close, sum(adv30, 37) / 37, 15)) < rank(correlation(rank(0.0261661 * high + 0.9738339 * vwap), rank(volume), 11)))",
+    "signal_description": "收盘-均量相关与加权高价-VWAP排名-量排名的比较"
+  },
+  {
+    "id": "alpha_075",
+    "name": "Alpha 075: VWAP量比低位相关",
+    "category": "reversal",
+    "expression": "rank(correlation(vwap, volume, 4)) < rank(correlation(rank(low), rank(adv50), 12))",
+    "signal_description": "VWAP-成交量相关与低价排名-均量排名相关的比较"
+  },
+  {
+    "id": "alpha_077",
+    "name": "Alpha 077: 中价高位衰减",
+    "category": "price_pattern",
+    "expression": "min(rank(decay_linear((high + low) / 2 + high - (vwap + high), 20)), rank(decay_linear(correlation((high + low) / 2, adv40, 3), 6)))",
+    "signal_description": "中高价-VWAP偏离衰减与中价-均量相关衰减的最小值"
+  },
+  {
+    "id": "alpha_078",
+    "name": "Alpha 078: 加权低价量比相关",
+    "category": "volume",
+    "expression": "rank(correlation(sum(0.352233 * low + 0.647767 * vwap, 20) / 20, sum(adv40, 20) / 20, 7)) ^ rank(correlation(rank(vwap), rank(volume), 6))",
+    "signal_description": "加权低价-VWAP均线与均量相关性的排名幂运算"
+  },
+  {
+    "id": "alpha_081",
+    "name": "Alpha 081: VWAP量比乘积衰减",
+    "category": "volume",
+    "expression": "-1 * (rank(log(product(rank(rank(correlation(vwap, sum(adv10, 50) / 50, 8)) ^ 4), 15))) < rank(correlation(rank(vwap), rank(volume), 5)))",
+    "signal_description": "VWAP-均量相关排名乘积的对数与VWAP-量排名的比较"
+  },
+  {
+    "id": "alpha_083",
+    "name": "Alpha 083: 股价位置量比",
+    "category": "price_pattern",
+    "expression": "rank(delay((high - low) / (sum(close, 5) / 5), 2)) * rank(rank(volume)) / (((high - low) / (sum(close, 5) / 5)) / (vwap - close))",
+    "signal_description": "滞后价格区间比与成交量排名的比值再除以VWAP偏离"
+  },
+  {
+    "id": "alpha_084",
+    "name": "Alpha 084: VWAP高位偏离幂",
+    "category": "momentum",
+    "expression": "ts_rank(vwap - ts_max(vwap, 15), 21) ^ ts_delta(close, 5)",
+    "signal_description": "VWAP高位偏离排名与价格变化的幂运算"
+  },
+  {
+    "id": "alpha_085",
+    "name": "Alpha 085: 加权高价量比相关",
+    "category": "volume",
+    "expression": "rank(correlation(0.876703 * high + 0.123297 * close, adv30, 10)) ^ rank(correlation(ts_rank((high + low) / 2, 4), ts_rank(volume, 10), 7))",
+    "signal_description": "加权高价-均量相关与中价排名-量排名相关的幂运算"
+  },
+  {
+    "id": "alpha_086",
+    "name": "Alpha 086: 收盘量比条件",
+    "category": "volume",
+    "expression": "-1 * (ts_rank(correlation(close, sum(adv20, 15) / 15, 6), 20) < rank((open + close) - (vwap + open)))",
+    "signal_description": "收盘-均量相关排名与开收-VWAP差距的比较"
+  },
+  {
+    "id": "alpha_088",
+    "name": "Alpha 088: 开盘低位排名衰减",
+    "category": "volume",
+    "expression": "min(rank(decay_linear((rank(open) + rank(low)) - (rank(high) + rank(close)), 8)), ts_rank(decay_linear(correlation(ts_rank(close, 8), ts_rank(adv60, 21), 8), 7), 3))",
+    "signal_description": "开盘低位排名与高低收排名差异的衰减，及收盘-均量相关衰减的最小值"
+  },
+  {
+    "id": "alpha_092",
+    "name": "Alpha 092: 中价低位量比衰减",
+    "category": "volume",
+    "expression": "min(ts_rank(decay_linear(((high + low) / 2 + close) < (low + open), 15), 19), ts_rank(decay_linear(correlation(rank(low), rank(adv30), 8), 7), 7))",
+    "signal_description": "中价-收盘与低价-开盘比较的衰减，及低价-均量排名相关衰减的最小值"
+  },
+  {
+    "id": "alpha_094",
+    "name": "Alpha 094: VWAP低位量比相关幂",
+    "category": "volatility",
+    "expression": "-1 * (rank(vwap - ts_min(vwap, 12)) ^ ts_rank(correlation(ts_rank(vwap, 20), ts_rank(adv60, 4), 18), 3))",
+    "signal_description": "VWAP低位偏离排名与VWAP-均量排名相关排名的幂运算"
+  },
+  {
+    "id": "alpha_095",
+    "name": "Alpha 095: 开盘低位中价量比",
+    "category": "volume",
+    "expression": "rank(open - ts_min(open, 12)) < ts_rank(rank(correlation(sum((high + low) / 2, 19) / 19, sum(adv40, 19) / 19, 13)) ^ 5, 12)",
+    "signal_description": "开盘价低位与中价-均量相关排名幂的比较"
+  },
+  {
+    "id": "alpha_096",
+    "name": "Alpha 096: VWAP量比衰减最大值",
+    "category": "volume",
+    "expression": "-1 * max(ts_rank(decay_linear(correlation(rank(vwap), rank(volume), 4), 4), 8), ts_rank(decay_linear(ts_argmax(correlation(ts_rank(close, 7), ts_rank(adv60, 4), 4), 13), 14), 13))",
+    "signal_description": "VWAP-成交量排名相关衰减与收盘-均量排名相关最大位置衰减的最大值"
+  },
+  {
+    "id": "alpha_098",
+    "name": "Alpha 098: VWAP量比衰减差值",
+    "category": "volume",
+    "expression": "rank(decay_linear(correlation(vwap, sum(adv5, 26) / 26, 5), 7)) - rank(decay_linear(ts_rank(ts_argmin(correlation(rank(open), rank(adv15), 21), 9), 7), 8))",
+    "signal_description": "VWAP-5日均量相关衰减与开盘-15日量排名相关最低位置衰减的差值"
+  },
+  {
+    "id": "alpha_099",
+    "name": "Alpha 099: 中价均量相关比较",
+    "category": "volume",
+    "expression": "-1 * (rank(correlation(sum((high + low) / 2, 20) / 20, sum(adv60, 20) / 20, 9)) < rank(correlation(low, volume, 6)))",
+    "signal_description": "中价-60日均量相关与最低价-成交量相关的比较"
+  },
+  {
+    "id": "alpha_101",
+    "name": "Alpha 101: 日内动量",
+    "category": "momentum",
+    "expression": "(close - open) / ((high - low) + 0.001)",
+    "signal_description": "简单日内动量：收盘价与开盘价之差除以日内振幅"
+  }
+]
