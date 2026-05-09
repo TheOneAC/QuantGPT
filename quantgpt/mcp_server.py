@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 mcp = FastMCP(
     "quantgpt",
-    instructions="QuantGPT — A 股因子回测服务。先用 list_operators 了解可用算子，再用 run_backtest 执行回测。可用 score_factor 评分、diagnose_factor 诊断、run_anti_overfit 检测过拟合、run_rolling_validation 滚动验证。",
+    instructions="QuantGPT — A 股和美股因子回测服务。先用 list_operators 了解可用算子，再用 list_universes 查看可用股票池（A股: hs300/csi500/... | 美股: sp500/nasdaq100/...），然后用 run_backtest 执行回测。可用 score_factor 评分、diagnose_factor 诊断、run_anti_overfit 检测过拟合、run_rolling_validation 滚动验证。",
     streamable_http_path="/",
     stateless_http=True,
     transport_security=TransportSecuritySettings(
@@ -52,11 +52,20 @@ def _enrich_with_fundamentals(expression: str, market_df, stock_codes: list, sta
 
 
 def _fetch_data_for_market(universe: str, start_date: str, end_date: str):
-    """Fetch market data and stock codes. Returns (market_df, stock_codes)."""
+    """Fetch market data and stock codes. Routes US universes to USMarketDataFetcher."""
+    us_prefixes = ("sp500", "nasdaq", "us_", "s&p")
+    is_us = universe.lower().startswith(us_prefixes) or universe.lower() in ("sp500", "nasdaq100")
+
     stock_codes = get_universe(universe, date=start_date)
-    fetcher = MarketDataFetcher()
-    market_df = fetcher.fetch_stocks(stock_codes, start_date, end_date)
-    return market_df, stock_codes
+
+    if is_us:
+        from .us_market_data import USMarketDataFetcher
+        fetcher = USMarketDataFetcher()
+        market_df = fetcher.fetch_stocks(stock_codes, start_date, end_date)
+    else:
+        fetcher = MarketDataFetcher()
+        market_df = fetcher.fetch_stocks(stock_codes, start_date, end_date)
+    return market_df, stock_codes, is_us
 
 
 def _fetch_benchmark_for_market(benchmark: str, start_date: str, end_date: str):
@@ -91,10 +100,20 @@ def list_universes() -> str:
         "csi1000": "中证1000成分股（派生: 全A - HS300 - CSI500, 取前1000）",
         "csi2000": "中证2000成分股（派生: 全A - HS300 - CSI500 - CSI1000, 取前2000）",
     }
-    a_share_benchmarks = {k: v["name"] for k, v in BENCHMARK_CODES.items()}
+    us_info = {
+        "sp500": "S&P 500 成分股",
+        "nasdaq100": "NASDAQ 100 成分股",
+        "us_nyse": "纽交所主要蓝筹股",
+        "us_nasdaq": "纳斯达克主要蓝筹股",
+        "us_all": "NYSE + NASDAQ 合并",
+    }
+    a_share_benchmarks = {k: v["name"] for k, v in BENCHMARK_CODES.items() if "name" in v}
+    us_benchmarks = {"sp500": "S&P 500 (SPY)", "nasdaq": "NASDAQ 100 (QQQ)", "russell2000": "Russell 2000 (IWM)", "dow30": "Dow 30 (DIA)"}
     return json.dumps({
-        "universes": a_share_info,
-        "benchmarks": a_share_benchmarks,
+        "a_share_universes": a_share_info,
+        "us_universes": us_info,
+        "a_share_benchmarks": a_share_benchmarks,
+        "us_benchmarks": us_benchmarks,
     }, ensure_ascii=False, indent=2)
 
 
@@ -144,12 +163,12 @@ async def run_backtest(
 
     Args:
         expression: 因子表达式,如 "rank(close/ts_mean(close, 20))"
-        universe: 股票池名称 (small_scale/hs300/csi500/csi1000/csi2000)
+        universe: 股票池 (A股: small_scale/hs300/csi500/csi1000/csi2000 | 美股: sp500/nasdaq100/us_nyse/us_nasdaq/us_all)
         start_date: 回测起始日期 YYYY-MM-DD
         end_date: 回测结束日期 YYYY-MM-DD
         n_groups: 分组数量
         holding_period: 持仓周期(交易日)
-        benchmark: 基准 (hs300/zz500/sz50/csi1000)
+        benchmark: 基准 (A股: hs300/zz500/sz50/csi1000 | 美股: sp500/nasdaq/russell2000/dow30)
         neutralize_industry: 行业中性化(默认开启)
         neutralize_cap: 市值中性化(默认开启)
 
@@ -161,11 +180,12 @@ async def run_backtest(
     _result_str = None
     try:
         logger.info(f"Getting universe: {universe}")
-        market_df, stock_codes = await asyncio.to_thread(_fetch_data_for_market, universe, start_date, end_date)
+        market_df, stock_codes, is_us = await asyncio.to_thread(_fetch_data_for_market, universe, start_date, end_date)
         if market_df is None or len(market_df) == 0:
             return json.dumps({"error": "No market data available. Check date range and stock codes."})
 
-        market_df = await asyncio.to_thread(_enrich_with_fundamentals, expression, market_df, stock_codes, start_date, end_date)
+        if not is_us:
+            market_df = await asyncio.to_thread(_enrich_with_fundamentals, expression, market_df, stock_codes, start_date, end_date)
 
         logger.info(f"Running backtest: {expression}")
         executor = get_executor()
@@ -266,12 +286,12 @@ async def score_factor(
 
     Args:
         expression: 因子表达式
-        universe: 股票池 (small_scale/hs300/csi500/csi1000/csi2000)
+        universe: 股票池 (A股: small_scale/hs300/csi500/csi1000/csi2000 | 美股: sp500/nasdaq100/us_nyse/us_nasdaq/us_all)
         start_date: 起始日期 YYYY-MM-DD
         end_date: 结束日期 YYYY-MM-DD
         n_groups: 分组数量
         holding_period: 持仓周期(交易日)
-        benchmark: 基准 (hs300/zz500/sz50/csi1000)
+        benchmark: 基准 (A股: hs300/zz500/sz50/csi1000 | 美股: sp500/nasdaq/russell2000/dow30)
         neutralize_industry: 行业中性化(默认开启)
         neutralize_cap: 市值中性化(默认开启)
 
@@ -284,11 +304,12 @@ async def score_factor(
     _error_msg = None
     _result_str = None
     try:
-        market_df, stock_codes = await asyncio.to_thread(_fetch_data_for_market, universe, start_date, end_date)
+        market_df, stock_codes, is_us = await asyncio.to_thread(_fetch_data_for_market, universe, start_date, end_date)
         if market_df is None or len(market_df) == 0:
             return json.dumps({"error": "No market data available."})
 
-        market_df = await asyncio.to_thread(_enrich_with_fundamentals, expression, market_df, stock_codes, start_date, end_date)
+        if not is_us:
+            market_df = await asyncio.to_thread(_enrich_with_fundamentals, expression, market_df, stock_codes, start_date, end_date)
 
         executor = get_executor()
         future = executor.submit_cpu_work(
@@ -420,14 +441,14 @@ async def run_anti_overfit(
     neutralize_industry: bool = True,
     neutralize_cap: bool = True,
 ) -> str:
-    """对因子执行反过拟合检测(4项测试)。
+    """对因子执行反过拟合检测(4项测试)。支持 A 股和美股。
 
     测试项: IC稳定性、子样本压力、安慰剂检验、半衰期估计。
     返回总分(0-100)和各测试通过情况。
 
     Args:
         expression: 因子表达式
-        universe: 股票池 (small_scale/hs300/csi500/csi1000/csi2000)
+        universe: 股票池 (A股: small_scale/hs300/csi500/csi1000/csi2000 | 美股: sp500/nasdaq100/us_nyse/us_nasdaq/us_all)
         start_date: 起始日期 YYYY-MM-DD
         end_date: 结束日期 YYYY-MM-DD
         holding_period: 持仓周期(交易日)
@@ -443,11 +464,12 @@ async def run_anti_overfit(
     _error_msg = None
     _result_str = None
     try:
-        market_df, stock_codes = await asyncio.to_thread(_fetch_data_for_market, universe, start_date, end_date)
+        market_df, stock_codes, is_us = await asyncio.to_thread(_fetch_data_for_market, universe, start_date, end_date)
         if market_df is None or len(market_df) == 0:
             return json.dumps({"error": "No market data available."})
 
-        market_df = await asyncio.to_thread(_enrich_with_fundamentals, expression, market_df, stock_codes, start_date, end_date)
+        if not is_us:
+            market_df = await asyncio.to_thread(_enrich_with_fundamentals, expression, market_df, stock_codes, start_date, end_date)
 
         executor = get_executor()
         future = executor.submit_cpu_work(
@@ -486,14 +508,14 @@ async def run_rolling_validation(
     neutralize_industry: bool = True,
     neutralize_cap: bool = True,
 ) -> str:
-    """对因子执行滚动验证(Walk-Forward)。
+    """对因子执行滚动验证(Walk-Forward)。支持 A 股和美股。
 
     将数据切分为多个 训练/验证/测试 窗口(默认 3年/1年/1年,步长3个月),
     计算每个窗口的 IC/IR,评估因子在样本外的衰减情况。
 
     Args:
         expression: 因子表达式
-        universe: 股票池 (small_scale/hs300/csi500/csi1000/csi2000)
+        universe: 股票池 (A股: small_scale/hs300/csi500/csi1000/csi2000 | 美股: sp500/nasdaq100/us_nyse/us_nasdaq/us_all)
         start_date: 起始日期(建议≥5年数据)
         end_date: 结束日期
         holding_period: 持仓周期(交易日)
@@ -509,11 +531,12 @@ async def run_rolling_validation(
     _error_msg = None
     _result_str = None
     try:
-        market_df, stock_codes = await asyncio.to_thread(_fetch_data_for_market, universe, start_date, end_date)
+        market_df, stock_codes, is_us = await asyncio.to_thread(_fetch_data_for_market, universe, start_date, end_date)
         if market_df is None or len(market_df) == 0:
             return json.dumps({"error": "No market data available."})
 
-        market_df = await asyncio.to_thread(_enrich_with_fundamentals, expression, market_df, stock_codes, start_date, end_date)
+        if not is_us:
+            market_df = await asyncio.to_thread(_enrich_with_fundamentals, expression, market_df, stock_codes, start_date, end_date)
 
         executor = get_executor()
         future = executor.submit_cpu_work(

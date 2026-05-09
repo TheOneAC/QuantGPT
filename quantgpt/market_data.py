@@ -49,6 +49,11 @@ BENCHMARK_CODES = {
     "csi500": {"baostock": "sh.000905", "rqdatac": "000905.XSHG", "name": "中证500"},  # alias
     "csi1000": {"baostock": "sh.000852", "rqdatac": "000852.XSHG", "name": "中证1000"},
     "sz50":   {"baostock": "sh.000016", "rqdatac": "000016.XSHG", "name": "上证50"},
+    # US benchmarks (routed to USMarketDataFetcher)
+    "sp500":  {"ticker": "SPY", "name": "S&P 500"},
+    "nasdaq": {"ticker": "QQQ", "name": "NASDAQ 100"},
+    "russell2000": {"ticker": "IWM", "name": "Russell 2000"},
+    "dow30":  {"ticker": "DIA", "name": "Dow 30"},
 }
 
 # rqdatac index codes for universe fetching
@@ -174,15 +179,22 @@ def get_universe(name: str, date: str | None = None) -> list[str]:
     """Return stock code list for a named universe.
 
     Supports: small_scale (static), hs300, csi500/zz500, csi1000, csi2000.
-    Uses rqdatac as primary source, baostock as fallback.
+    US: sp500, nasdaq100, us_nyse, us_nasdaq, us_all (routed to us_market_data).
+    Uses rqdatac as primary source, baostock as fallback for A-shares.
     """
+    # Route US universes
+    us_prefixes = ("sp500", "nasdaq", "us_", "s&p")
+    if name.lower().startswith(us_prefixes) or name.lower() in ("sp500", "nasdaq100"):
+        from .us_market_data import get_us_universe as _get_us
+        return _get_us(name)
+
     if name in UNIVERSES:
         return UNIVERSES[name]
 
     if name in ("hs300", "csi500", "zz500", "csi1000", "csi2000"):
         return _fetch_index_constituents(name, date)
 
-    raise ValueError(f"Unknown universe: {name}. Available: {list(UNIVERSES.keys()) + ['hs300', 'csi500', 'zz500', 'csi1000', 'csi2000']}")
+    raise ValueError(f"Unknown universe: {name}. Available: {list(UNIVERSES.keys()) + ['hs300', 'csi500', 'zz500', 'csi1000', 'csi2000', 'sp500', 'nasdaq100', 'us_nyse', 'us_nasdaq', 'us_all']}")
 
 
 def _fetch_index_constituents(name: str, date: str | None = None) -> list[str]:
@@ -612,7 +624,16 @@ def fetch_benchmark_returns(
     end_date: str | None = None,
     cache_dir: str | None = None,
 ) -> pd.Series | None:
-    """Fetch benchmark index daily returns: cache → rqdatac → baostock."""
+    """Fetch benchmark index daily returns: cache → rqdatac → baostock.
+
+    US benchmarks (sp500, nasdaq, russell2000, dow30) are routed to
+    us_market_data.fetch_benchmark_returns().
+    """
+    us_benchmarks = {"sp500", "nasdaq", "russell2000", "dow30"}
+    if benchmark.lower() in us_benchmarks:
+        from .us_market_data import fetch_benchmark_returns as _us_benchmark
+        return _us_benchmark(benchmark, start_date, end_date)
+
     info = BENCHMARK_CODES.get(benchmark, BENCHMARK_CODES["hs300"])
     cache_dir = cache_dir or str(_PROJECT_ROOT / "data" / "benchmark")
     os.makedirs(cache_dir, exist_ok=True)
